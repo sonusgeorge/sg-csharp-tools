@@ -30,6 +30,10 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+  <!-- Pack the button pictures inside the dll. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\*.png" />
+  </ItemGroup>  
   <!-- After every build, copy the dll and the manifest to the folder
        where Revit 2027 looks for add-ins. Revit must be closed, because
        a running Revit keeps the dll locked.
