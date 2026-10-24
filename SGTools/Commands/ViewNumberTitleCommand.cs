@@ -1,27 +1,25 @@
-using System;
-using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using System.Windows.Interop;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
+using System.Windows.Interop;
 using SGTools.Dialogs;
+using System;
+using System.Collections.Generic;
 
 namespace SGTools.Commands
 {
     // Change the Detail Number and Title on Sheet of views on a sheet.
-    // The C# version of the pyRevit tool, following the same eight steps.
     [Transaction(TransactionMode.Manual)]
     public class ViewNumberTitleCommand : IExternalCommand
     {
         private const string ToolName = "View Number + Title";
-
         // Revit refuses two views with the same number on one sheet, even
         // for a moment, so a swap parks one view on this number in between.
         private const string TempNumber = "SG_TEMP_SWAP";
 
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        public Result Execute(ExternalCommandData commandData,
+                              ref string message, ElementSet elements)
         {
             // uidoc is the model as shown on screen, doc is the model itself.
             UIDocument uidoc = commandData.Application.ActiveUIDocument;
@@ -36,73 +34,74 @@ namespace SGTools.Commands
                     "(right-click, Deactivate View).");
                 return Result.Cancelled;
             }
-
-            // 2. Show a banner at the top of the drawing area. "finally"
-            //    guarantees it is removed however the tool ends.
+            // 2 to 7 run while a banner at the top of Revit says what to do.
+            // "finally" closes it however the tool ends.
             PickBanner banner = new PickBanner("Pick a view to renumber", commandData.Application);
             banner.Show();
             try
             {
                 while (true)
                 {
-                    // 3. Wait for a click on a view. Esc ends the tool.
+                    // 2. Wait for a click on a view on the sheet. Esc stops the tool.
                     Reference reference;
                     try
                     {
                         reference = uidoc.Selection.PickObject(
                             ObjectType.Element,
                             new ViewportFilter(),
-                            "Pick a view to renumber. Esc to finish.");
+                            "Pick a view. Esc to finish.");
                     }
                     catch (Autodesk.Revit.Exceptions.OperationCanceledException)
                     {
                         break;
                     }
-                    Viewport picked = (Viewport)doc.GetElement(reference);
-                    View view = (View)doc.GetElement(picked.ViewId);
+                    Viewport viewport = (Viewport)doc.GetElement(reference);
 
-                    // 4. Read the picked view's current number and title.
-                    string oldNumber = GetNumber(picked);
-                    string oldTitle = GetTitleOnSheet(view);
+                    // 3. Read the view's Detail Number and Title on Sheet.
+                    Parameter numberParam = viewport.get_Parameter(BuiltInParameter.VIEWPORT_DETAIL_NUMBER);
+                    Parameter titleParam = viewport.get_Parameter(BuiltInParameter.VIEW_DESCRIPTION);
+                    string oldNumber = numberParam.AsString() ?? "";
+                    string oldTitle = titleParam.AsString() ?? "";
 
-                    // 5. Note which number each of the other views on this sheet has.
+                    // 4. Note which number each of the other views on this sheet has.
                     //    Views without a number (legends) are left out.
-                    ViewSheet sheet = (ViewSheet)doc.GetElement(picked.SheetId);
+                    ViewSheet sheet = (ViewSheet)doc.GetElement(viewport.SheetId);
                     Dictionary<string, Viewport> others = new Dictionary<string, Viewport>();
                     Dictionary<string, string> numbersInUse = new Dictionary<string, string>();
-                    foreach (ElementId viewportId in sheet.GetAllViewports())
+                    foreach (ElementId otherId in sheet.GetAllViewports())
                     {
-                        Viewport viewport = (Viewport)doc.GetElement(viewportId);
-                        string number = GetNumber(viewport);
-                        if (viewport.Id != picked.Id && number != "")
+                        Viewport otherViewport = (Viewport)doc.GetElement(otherId);
+                        string number = otherViewport
+                            .get_Parameter(BuiltInParameter.VIEWPORT_DETAIL_NUMBER)
+                            .AsString() ?? "";
+                        if (otherViewport.Id != viewport.Id && number != "")
                         {
-                            others[number] = viewport;
-                            numbersInUse[number] = GetShownTitle(doc, viewport);
+                            others[number] = otherViewport;
+                            numbersInUse[number] = ShownTitle(doc, otherViewport);
                         }
                     }
 
-                    // 6. Show the box and wait for Apply or Cancel.
-                    ViewTitleWindow window = new ViewTitleWindow(
-                        view.Name, DescribeViewType(view), oldNumber, oldTitle, numbersInUse);
-                    // Make Revit the box's owner, so it opens centred on Revit
-                    // and stays in front of it.
+                    // 5. Show the box with the current values and wait for
+                    //          Apply or Cancel. Cancel goes back to step 2.
+                    View view = (View)doc.GetElement(viewport.ViewId);
+                    ViewTitleWindow window = new ViewTitleWindow(view.Name, oldNumber, oldTitle, numbersInUse);
+                    // Make Revit the box's owner, so it opens centred over Revit.
                     new WindowInteropHelper(window).Owner = commandData.Application.MainWindowHandle;
-                    window.ShowDialog();
-
-                    // Cancelled or nothing changed: change nothing, pick again.
-                    if (!window.Applied)
+                    if (window.ShowDialog() != true)
                     {
                         continue;
                     }
                     string newNumber = window.NewNumber;
                     string newTitle = window.NewTitle;
+
+                    // 6. If nothing changed, go back to step 2.
                     if (newNumber == oldNumber && newTitle == oldTitle)
                     {
                         continue;
                     }
 
-                    // 7. Make the changes as one undo step. If Revit refuses any
-                    //    of them, undo them all and say so.
+                    // 7. Make the changes as one undo step. If Revit refuses any of
+                    //    them, the transaction undoes them all and we say so.
                     using (Transaction transaction = new Transaction(doc, ToolName))
                     {
                         transaction.Start();
@@ -110,20 +109,20 @@ namespace SGTools.Commands
                         {
                             if (newNumber != oldNumber)
                             {
-                                if (others.TryGetValue(newNumber, out Viewport other))
+                                if (others.TryGetValue(newNumber, out Viewport swapWith))
                                 {
-                                    SetNumber(other, FreeTempNumber(others));
-                                    SetNumber(picked, newNumber);
-                                    SetNumber(other, oldNumber);
+                                    SetNumber(swapWith, TempNumber);
+                                    SetNumber(viewport, newNumber);
+                                    SetNumber(swapWith, oldNumber);
                                 }
                                 else
                                 {
-                                    SetNumber(picked, newNumber);
+                                    SetNumber(viewport, newNumber);
                                 }
                             }
                             if (newTitle != oldTitle)
                             {
-                                view.get_Parameter(BuiltInParameter.VIEW_DESCRIPTION).Set(newTitle);
+                                titleParam.Set(newTitle);
                             }
                             transaction.Commit();
                         }
@@ -135,71 +134,35 @@ namespace SGTools.Commands
                         }
                     }
 
-                    // 8. Back to step 3.
                 }
             }
             finally
             {
                 banner.Close();
-            }
+            }               
 
             return Result.Succeeded;
         }
-
-        // The view's Detail Number. Empty text for a view that has none,
-        // such as a legend.
-        private static string GetNumber(Viewport viewport)
-        {
-            return viewport.get_Parameter(BuiltInParameter.VIEWPORT_DETAIL_NUMBER).AsString() ?? "";
-        }
-
-        // Set() returns false when Revit refuses the value. Throwing an
-        // error here sends us to the "catch" block, which undoes everything.
+        // Set a view's Detail Number. If Revit refuses, throw an error, so
+        // the transaction undoes everything done so far.
         private static void SetNumber(Viewport viewport, string number)
         {
-            if (!viewport.get_Parameter(BuiltInParameter.VIEWPORT_DETAIL_NUMBER).Set(number))
+            Parameter param = viewport.get_Parameter(BuiltInParameter.VIEWPORT_DETAIL_NUMBER);
+            if (!param.Set(number))
             {
-                throw new InvalidOperationException("Revit refused the number '" + number + "'.");
+                throw new InvalidOperationException($"Revit refused the number '{number}'.");
             }
         }
-
-        // A temporary number that no view on the sheet is using.
-        private static string FreeTempNumber(Dictionary<string, Viewport> numbersInUse)
+        // The title you see on the sheet: Title on Sheet, or the view's name
+        // when Title on Sheet is empty.
+        private static string ShownTitle(Document doc, Viewport viewport)
         {
-            string number = TempNumber;
-            while (numbersInUse.ContainsKey(number))
+            string title = viewport.get_Parameter(BuiltInParameter.VIEW_DESCRIPTION).AsString();
+            if (string.IsNullOrEmpty(title))
             {
-                number += "_";
+                return doc.GetElement(viewport.ViewId).Name;
             }
-            return number;
-        }
-
-        // What is typed in Title on Sheet. Empty text if nothing is.
-        private static string GetTitleOnSheet(View view)
-        {
-            return view.get_Parameter(BuiltInParameter.VIEW_DESCRIPTION).AsString() ?? "";
-        }
-
-        // The title you see on the sheet: Title on Sheet, or the view name.
-        private static string GetShownTitle(Document doc, Viewport viewport)
-        {
-            View view = (View)doc.GetElement(viewport.ViewId);
-            string title = GetTitleOnSheet(view);
-            return title != "" ? title : view.Name;
-        }
-
-        // Turn Revit's "FloorPlan" into "floor plan" for the box.
-        private static string DescribeViewType(View view)
-        {
-            switch (view.ViewType)
-            {
-                case ViewType.ThreeD:
-                    return "3D view";
-                case ViewType.EngineeringPlan:
-                    return "structural plan";
-                default:
-                    return Regex.Replace(view.ViewType.ToString(), "([a-z])([A-Z])", "$1 $2").ToLower();
-            }
+            return title;
         }
     }
 }

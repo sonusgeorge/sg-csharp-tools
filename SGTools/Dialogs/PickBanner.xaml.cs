@@ -5,8 +5,8 @@ using Autodesk.Revit.UI;
 
 namespace SGTools.Dialogs
 {
-    // The logic behind the banner: it only has to place itself at the
-    // top centre of Revit's drawing area.
+    // The banner shown while a tool waits for a click. It only has to
+    // place itself at the top centre of Revit's drawing area.
     public partial class PickBanner : Window
     {
         // Where Revit's drawing area is on the screen, in pixels.

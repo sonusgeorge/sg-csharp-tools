@@ -1,31 +1,30 @@
-using System;
 using System.Reflection;
 using Autodesk.Revit.UI;
 using SGTools.Commands;
+using Autodesk.Revit.UI.Events;
 
 namespace SGTools
 {
-    // The application: Revit runs OnStartup once, when Revit starts.
-    // This is where an add-in builds its ribbon tab, panels and buttons.
+    // Runs once when Revit starts, and builds the SG Tools 2.0 tab.
     public class App : IExternalApplication
     {
-        private const string TabName = "SG Tools 2.0";
-        private const string HelpPage = "https://github.com/sonusgeorge/sg-csharp-tools";
-
+        // Kept so its picture can be swapped when Revit's theme changes.
+        private PushButton viewNumberButton;        
         public Result OnStartup(UIControlledApplication application)
         {
-            application.CreateRibbonTab(TabName);
+            // 1. Make the tab and a Sheets panel on it.
+            application.CreateRibbonTab("SG Tools 2.0");
+            RibbonPanel panel = application.CreateRibbonPanel("SG Tools 2.0", "Sheets");
 
-            // One line per panel. A panel is a named group of buttons.
-            RibbonPanel sheetsPanel = application.CreateRibbonPanel(TabName, "Sheets");
-
-            // One AddButton call per button, on the panel it belongs to.
-            AddButton(
-                sheetsPanel,
-                typeof(ViewNumberTitleCommand),
-                "View Number\n+ Title",
-                "view-number-title",
-                "Renumber and retitle the views on a sheet.",
+            // 2. Add a button that runs ViewNumberTitle tool from this dll.
+            string dllPath = Assembly.GetExecutingAssembly().Location;
+            PushButtonData buttonData = new PushButtonData(
+                "ViewNumberTitle", "View Number\n+ Title", dllPath,
+                typeof(ViewNumberTitleCommand).FullName);
+            // The short line shown on hover, and the longer text shown
+            // when you keep hovering.
+            buttonData.ToolTip = "Renumber and retitle the views on a sheet.";
+            buttonData.LongDescription =
                 "Changes a view's Detail Number and its Title on Sheet. If the number " +
                 "already belongs to another view on the sheet, the two views swap numbers.\n\n" +
                 "1. Open a sheet and click this button.\n" +
@@ -33,40 +32,31 @@ namespace SGTools
                 "3. Type the new number, the new title, or both. Press Enter.\n" +
                 "4. Click the next view, or press Esc to finish.\n\n" +
                 "Each change is one undo step. A legend has no number, so only its " +
-                "title can be changed. Press F1 for the full guide.",
-                HelpPage + "#view-number--title");
+                "title can be changed.\n\n" +
+                "Version 1.0 (October 2026). Tested in Revit 2027. Press F1 for the full guide.";
+
+            // F1 while hovering opens the tool's section of the README.
+            buttonData.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url,
+                "https://github.com/sonusgeorge/sg-csharp-tools#view-number--title"));
+            buttonData.LargeImage = Icons.Load("view-number-title");
+            viewNumberButton = (PushButton)panel.AddItem(buttonData);
+
+            // Revit's light/dark theme can change while it runs.
+            // When it does, run OnThemeChanged.
+            application.ThemeChanged += OnThemeChanged;
 
             return Result.Succeeded;
         }
 
-        // Revit runs this once, when it closes. We have nothing to tidy up.
         public Result OnShutdown(UIControlledApplication application)
         {
+            application.ThemeChanged -= OnThemeChanged;            
             return Result.Succeeded;
         }
-
-        // Adds one button to a panel.
-        //   command      the class Revit runs when the button is clicked
-        //   text         the words under the button
-        //   iconName     the picture's file name in Resources, without ".png"
-        //   tooltip      the short line shown on hover
-        //   description  the longer text shown when you keep hovering
-        //   helpUrl      the page F1 opens
-        private static void AddButton(RibbonPanel panel, Type command, string text,
-                                      string iconName, string tooltip, string description,
-                                      string helpUrl)
+        // Load the picture again, which picks the one for the new theme.
+        private void OnThemeChanged(object sender, ThemeChangedEventArgs e)
         {
-            // A button has to know which dll holds its command, and which
-            // class in that dll to run. FullName is "namespace.class".
-            string dllPath = Assembly.GetExecutingAssembly().Location;
-            PushButtonData button = new PushButtonData(command.FullName, text, dllPath, command.FullName);
-
-            button.LargeImage = Icons.Load(iconName);
-            button.ToolTip = tooltip;
-            button.LongDescription = description;
-            button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, helpUrl));
-
-            panel.AddItem(button);
+            viewNumberButton.LargeImage = Icons.Load("view-number-title");
         }
     }
 }

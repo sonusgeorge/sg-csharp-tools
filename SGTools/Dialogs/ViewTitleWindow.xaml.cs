@@ -1,60 +1,56 @@
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Input;
 
 namespace SGTools.Dialogs
 {
-    // The logic behind the box that asks for the new number and title.
-    // Its layout is in ViewTitleWindow.xaml; the two files together make
-    // one class, which is what "partial" means.
+    // The box that asks for the new number and title.
+    // numbersInUse is the sheet's other numbered views: number -> shown title.
+    // When Apply is clicked, NewNumber and NewTitle hold the answers.
     public partial class ViewTitleWindow : Window
     {
-        private readonly string oldNumber;
-        private readonly Dictionary<string, string> numbersInUse;
-        // A view with no number (a legend) can only have its title changed.
-        private readonly bool hasNumber;
-
-        // The answers. Applied stays false if the box was cancelled.
-        public bool Applied { get; private set; }
         public string NewNumber { get; private set; }
         public string NewTitle { get; private set; }
 
-        public ViewTitleWindow(string viewName, string viewType, string oldNumber,
-                               string oldTitle, Dictionary<string, string> numbersInUse)
+        private string oldNumber;
+        private Dictionary<string, string> numbersInUse;
+        // A view with no number (a legend) can only have its title changed.
+        private bool hasNumber;
+
+        public ViewTitleWindow(string viewName, string oldNumber, string oldTitle,
+                               Dictionary<string, string> numbersInUse)
         {
+            // Stored first: filling the number field below already runs
+            // NumberChanged, which uses all three.
             this.oldNumber = oldNumber;
             this.numbersInUse = numbersInUse;
             hasNumber = oldNumber != "";
 
-            // Builds everything described in the XAML file.
             InitializeComponent();
 
-            // Fill the box with what the picked view has now.
-            ViewNameRun.Text = viewName;
-            ViewTypeRun.Text = viewType;
-            TitleHint.Text = viewName;
-            TitleBox.Text = oldTitle;
+            // Fill the box with what the clicked view has now.
+            ViewNameText.Text = viewName;
             NumberBox.Text = oldNumber;
-
+            TitleBox.Text = oldTitle;
             if (!hasNumber)
             {
                 NumberBox.IsEnabled = false;
-                ShowNotice("This view has no detail number. You can still change its title.", false);
+                ShowNotice("This view has no detail number. You can still change its title.");
             }
         }
 
         private void WindowLoaded(object sender, RoutedEventArgs e)
         {
-            // Put the cursor in the number field with the number selected,
-            // so typing replaces it. Without a number, start in the title.
+            // Start with the cursor in the number field and the number
+            // selected, so typing replaces it. A legend starts in the title.
             TextBox field = hasNumber ? NumberBox : TitleBox;
             field.Focus();
             field.SelectAll();
         }
 
-        // Runs on every keystroke in the number field.
+        // Runs on every change to the text in the number field.
         private void NumberChanged(object sender, TextChangedEventArgs e)
         {
             if (!hasNumber)
@@ -64,13 +60,13 @@ namespace SGTools.Dialogs
             string number = NumberBox.Text.Trim();
             if (number == "")
             {
-                ShowNotice("Type a number. A view can't be left without one.", true);
+                ShowNotice("Type a number. A view can't be left without one.", problem: true);
             }
             else if (number != oldNumber && numbersInUse.ContainsKey(number))
             {
                 string otherTitle = numbersInUse[number];
-                ShowNotice(number + " is used by " + otherTitle + ". The two views will swap, so " +
-                           otherTitle + " becomes " + oldNumber + ".", false);
+                ShowNotice($"{number} is used by {otherTitle}. " +
+                           $"The two views will swap, so {otherTitle} becomes {oldNumber}.");
             }
             else
             {
@@ -78,33 +74,36 @@ namespace SGTools.Dialogs
             }
         }
 
-        private void ShowNotice(string text, bool problem)
+        // Show text under the number: teal for information, red for a problem.
+        private void ShowNotice(string text, bool problem = false)
         {
-            string kind = problem ? "Problem" : "Notice";
-            Notice.Background = (Brush)FindResource("SG." + kind + "Back");
-            NoticeText.Foreground = (Brush)FindResource("SG." + kind + "Ink");
+            string back = problem ? "SG.ProblemBack" : "SG.NoticeBack";
+            string ink = problem ? "SG.ProblemInk" : "SG.NoticeInk";
+            Notice.Background = (Brush)FindResource(back);
+            NoticeText.Foreground = (Brush)FindResource(ink);
             NoticeText.Text = text;
             Notice.Visibility = Visibility.Visible;
         }
 
-        private void Apply(object sender, RoutedEventArgs e)
+        private void ApplyClicked(object sender, RoutedEventArgs e)
         {
             string number = NumberBox.Text.Trim();
+            // An empty number: the red notice already says why, so stay open.
             if (hasNumber && number == "")
             {
                 return;
             }
             NewNumber = number;
             NewTitle = TitleBox.Text.Trim();
-            Applied = true;
-            Close();
+            DialogResult = true;
         }
-
-        private void Cancel(object sender, RoutedEventArgs e)
+        // The × in the title bar: the same as Cancel.
+        private void CloseClicked(object sender, RoutedEventArgs e)
         {
-            Close();
+            DialogResult = false;
         }
 
+        // Lets you move the box by dragging its title bar.
         private void DragWindow(object sender, MouseButtonEventArgs e)
         {
             DragMove();

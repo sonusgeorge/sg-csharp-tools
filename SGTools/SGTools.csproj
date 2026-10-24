@@ -10,15 +10,16 @@
     <!-- Two conveniences switched off, so nothing is added behind our backs. -->
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <!-- Revit's folder holds older copies of two Microsoft libraries than
-         .NET 10 has, and the build warns about the mismatch (MSB3277).
-         It comes from Revit's files, not our code, so hide that warning. -->
+        <!-- Revit's files were built against newer copies of some Windows
+         libraries than .NET 10 lists, and the build warns about the
+         mismatch (MSB3277). It comes from Revit's files, not our code,
+         and Revit uses its own copies, so show it as a quiet message. -->
     <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
   <!-- The Revit API: the two files that let our code talk to Revit.
-       Private=false means "don't copy them next to our dll"; Revit
-       already has them. -->
+       Private=false means "don't copy them next to our dll";
+       Revit already has them. -->
   <ItemGroup>
     <Reference Include="RevitAPI">
       <HintPath>C:\Program Files\Autodesk\Revit 2027\RevitAPI.dll</HintPath>
@@ -29,12 +30,10 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
-
   <!-- Pack the button pictures inside the dll. -->
   <ItemGroup>
     <EmbeddedResource Include="Resources\*.png" />
-  </ItemGroup>
-
+  </ItemGroup>  
   <!-- After every build, copy the dll and the manifest to the folder
        where Revit 2027 looks for add-ins. Revit must be closed, because
        a running Revit keeps the dll locked.

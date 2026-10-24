@@ -4,7 +4,8 @@
         Title="View Number + Title"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" ShowInTaskbar="False"
-        SizeToContent="WidthAndHeight" WindowStartupLocation="CenterOwner"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="CenterOwner"
         Loaded="WindowLoaded">
 
     <!-- Bring in the shared SG Tools colours and styles. Everything named
@@ -30,30 +31,24 @@
                     MouseLeftButtonDown="DragWindow">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Style="{StaticResource SG.CloseButton}"
-                            Click="Cancel" ToolTip="Close"/>
+                            Click="CloseClicked" ToolTip="Close"/>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Ellipse Width="9" Height="9" Margin="0,1,8,0" VerticalAlignment="Center"
-                                 Fill="{StaticResource SG.Accent}"/>
-                        <TextBlock Text="SG Tools 2.0" Margin="0,0,8,0"
-                                   Foreground="{StaticResource SG.Muted}"/>
+                        <TextBlock Text="SG Tools" Margin="0,0,8,0" FontWeight="SemiBold"
+                                   Foreground="{StaticResource SG.Accent}"/>
                         <TextBlock Text="View number + title" FontWeight="SemiBold"/>
                     </StackPanel>
                 </DockPanel>
             </Border>
 
+            <!-- The fields -->
             <StackPanel Margin="16,14,16,18">
 
-                <!-- Which view was picked -->
-                <TextBlock Text="View" Style="{StaticResource SG.Label}" Margin="0"/>
-                <TextBlock TextTrimming="CharacterEllipsis">
-                    <Run x:Name="ViewNameRun" FontSize="15" FontWeight="SemiBold"/>
-                    <Run x:Name="ViewTypeRun" Foreground="{StaticResource SG.Muted}"/>
-                </TextBlock>
+                <!-- Which view was clicked -->
+                <TextBlock x:Name="ViewNameText" FontSize="15" FontWeight="SemiBold"/>
 
                 <!-- Detail number -->
-                <TextBlock Text="Detail number" Style="{StaticResource SG.Label}" Margin="0,16,0,4"/>
+                <TextBlock Text="Detail number" Style="{StaticResource SG.Label}"/>
                 <TextBox x:Name="NumberBox" Style="{StaticResource SG.TextBox}"
-                         FontSize="15" FontWeight="SemiBold"
                          TextChanged="NumberChanged"/>
 
                 <!-- Notice under the number: hidden until there is something to say -->
@@ -62,35 +57,17 @@
                     <TextBlock x:Name="NoticeText" TextWrapping="Wrap"/>
                 </Border>
 
-                <!-- Title on sheet. The grey hint shows only while the field is empty. -->
-                <TextBlock Text="Title on sheet" Style="{StaticResource SG.Label}" Margin="0,16,0,4"/>
-                <Grid>
-                    <TextBox x:Name="TitleBox" Style="{StaticResource SG.TextBox}"/>
-                    <TextBlock x:Name="TitleHint" IsHitTestVisible="False"
-                               Margin="11,0,11,0" VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis"
-                               Foreground="{StaticResource SG.Muted}">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Text, ElementName=TitleBox}" Value="">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                </Grid>
-                <TextBlock Text="Leave empty to show the view name." FontSize="12"
-                           Margin="0,4,0,0" Foreground="{StaticResource SG.Muted}"/>
+                <!-- Title on sheet -->
+                <TextBlock Text="Title on sheet (leave empty to show the view name)"
+                           TextWrapping="Wrap" Style="{StaticResource SG.Label}"/>
+                <TextBox x:Name="TitleBox" Style="{StaticResource SG.TextBox}"/>
 
                 <!-- Buttons: Enter presses Apply, Esc presses Cancel -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
                     <Button Content="Cancel" Style="{StaticResource SG.Button}" Margin="0,0,8,0"
-                            IsCancel="True" Click="Cancel"/>
+                            IsCancel="True"/>
                     <Button Content="Apply" Style="{StaticResource SG.PrimaryButton}"
-                            IsDefault="True" Click="Apply"/>
+                            IsDefault="True" Click="ApplyClicked"/>
                 </StackPanel>
 
             </StackPanel>
