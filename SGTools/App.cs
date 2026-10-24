@@ -14,9 +14,11 @@ namespace SGTools
             RibbonPanel panel = application.CreateRibbonPanel("SG Tools 2.0", "Sheets");
 
             // 2. Add a button that runs HelloCommand from this dll.
+            // 2. Add a button that runs ViewNumberTitle tool from this dll.
             string dllPath = Assembly.GetExecutingAssembly().Location;
             PushButtonData buttonData = new PushButtonData(
-                "Hello", "Hello", dllPath, typeof(HelloCommand).FullName);
+                "ViewNumberTitle", "View Number\n+ Title", dllPath,
+                typeof(ViewNumberTitleCommand).FullName);
             panel.AddItem(buttonData);
 
             return Result.Succeeded;

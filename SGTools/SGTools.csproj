@@ -5,6 +5,8 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <!-- Revit is a 64-bit program, so our dll must be 64-bit too. -->
     <PlatformTarget>x64</PlatformTarget>
+    <!-- Include WPF, Windows' library for building windows. -->
+    <UseWPF>true</UseWPF>
     <!-- Two conveniences switched off, so nothing is added behind our backs. -->
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
