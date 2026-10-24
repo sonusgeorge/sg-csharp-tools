@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The manifest: Revit reads this file at startup to learn that the
+     add-in exists, where its dll is, and which class to run. -->
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>SG Tools 2.0</Name>
+    <Assembly>SGTools\SGTools.dll</Assembly>
+    <FullClassName>SGTools.App</FullClassName>
+    <AddInId>71301770-0C83-499F-AD1F-990827F8F074</AddInId>
+    <VendorId>SGTools</VendorId>
+    <VendorDescription>Sonu George, https://github.com/sonusgeorge</VendorDescription>
+  </AddIn>
+</RevitAddIns>
