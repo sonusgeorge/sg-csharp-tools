@@ -62,6 +62,7 @@ namespace SGTools.Commands
                 //    Views without a number (legends) are left out.
                 ViewSheet sheet = (ViewSheet)doc.GetElement(viewport.SheetId);
                 Dictionary<string, Viewport> others = new Dictionary<string, Viewport>();
+                Dictionary<string, string> numbersInUse = new Dictionary<string, string>();
                 foreach (ElementId otherId in sheet.GetAllViewports())
                 {
                     Viewport otherViewport = (Viewport)doc.GetElement(otherId);
@@ -71,13 +72,14 @@ namespace SGTools.Commands
                     if (otherViewport.Id != viewport.Id && number != "")
                     {
                         others[number] = otherViewport;
+                        numbersInUse[number] = ShownTitle(doc, otherViewport);
                     }
                 }
 
                 // 5. Show the box with the current values and wait for
                 //          Apply or Cancel. Cancel goes back to step 2.
                 View view = (View)doc.GetElement(viewport.ViewId);
-                ViewTitleWindow window = new ViewTitleWindow(view.Name, oldNumber, oldTitle);
+                ViewTitleWindow window = new ViewTitleWindow(view.Name, oldNumber, oldTitle, numbersInUse);
                 // Make Revit the box's owner, so it opens centred over Revit.
                 new WindowInteropHelper(window).Owner = commandData.Application.MainWindowHandle;
                 if (window.ShowDialog() != true)
@@ -140,6 +142,17 @@ namespace SGTools.Commands
             {
                 throw new InvalidOperationException($"Revit refused the number '{number}'.");
             }
+        }
+        // The title you see on the sheet: Title on Sheet, or the view's name
+        // when Title on Sheet is empty.
+        private static string ShownTitle(Document doc, Viewport viewport)
+        {
+            string title = viewport.get_Parameter(BuiltInParameter.VIEW_DESCRIPTION).AsString();
+            if (string.IsNullOrEmpty(title))
+            {
+                return doc.GetElement(viewport.ViewId).Name;
+            }
+            return title;
         }
     }
 }
