@@ -24,7 +24,9 @@ It behaves the same as the pyRevit version; the [recording there](https://github
 
 Each change is one undo step. A legend has no Detail Number, so for a legend only the title can be changed.
 
-**Tested in:** Revit 2027. Builds for Revit 2024, 2025 and 2026 are not set up yet.
+While it waits for a click, a teal banner at the top of the drawing area says what to do. The pyRevit version uses the same banner.
+
+**Tested in:** Revit 2027, in full. Builds for Revit 2024, 2025 and 2026 are not set up yet.
 
 ## The same tool, two ways
 
@@ -55,12 +57,14 @@ SGTools/
 
 ## Build and install
 
-You need Revit 2027 and Visual Studio 2026 with the .NET desktop development workload.
+You need Revit 2027 and the .NET 10 SDK.
 
 1. Clone this repository.
 2. Close Revit.
-3. Open `SGTools/SGTools.slnx` in Visual Studio and build (Ctrl+Shift+B). The build copies the add-in into `%APPDATA%\Autodesk\Revit\Addins\2027`.
+3. In a terminal, go into the `SGTools` folder and run `dotnet build`. The build copies the add-in into `%APPDATA%\Autodesk\Revit\Addins\2027`.
 4. Start Revit. When it warns about an unsigned add-in, choose **Always Load**. The **SG Tools 2.0** tab appears on the ribbon.
+
+To check that the code compiles while Revit is open, run `dotnet build -p:SkipRevitCopy=true`, which skips the copy into Revit's folder. You can also open `SGTools/SGTools.csproj` in Visual Studio and build from there.
 
 ## What building it taught
 
@@ -69,8 +73,15 @@ You need Revit 2027 and Visual Studio 2026 with the .NET desktop development wor
 - C# has to be compiled before Revit can use it, and a running Revit keeps the `.dll` locked, so every change means closing Revit first.
 - C# makes you state the type of everything. A general element has to be cast, as in `(Viewport)doc.GetElement(...)`, before it can be used as a viewport.
 - A window is one class split over two files, the XAML layout and the C# logic, joined by the word `partial`.
-- pyRevit quietly does a lot: it loads the Revit API, opens and closes transactions, builds the ribbon from folders and provides a banner. In C# each of those has to be written out.
+- pyRevit quietly does a lot: it loads the Revit API, opens and closes transactions, builds the ribbon from folders and makes Revit the owner of every window. In C# each of those has to be written out.
+- The project file can be written by hand in about thirty lines: the .NET version, the two Revit API files, WPF, and a step that copies the add-in into Revit's folder after every build.
+- The compiler catches a missing or misspelled name before Revit ever runs the code, but not a name written inside text. A styles file saved under the wrong name built fine and only failed when the window opened.
+- C#'s `??` only replaces `null`. Python's `or` also treats an empty string as missing, so the C# version needs `string.IsNullOrEmpty` to do the same job.
+- Two different classes can share a name. .NET and Revit both have an `OperationCanceledException`, so catching Esc needs Revit's full name, or the tool would catch the wrong one and crash.
+- Code can subscribe to Revit's own events. Listening for `ThemeChanged` lets the button swap to its dark-theme picture the moment the theme changes.
+- A window shown with `Show()` doesn't wait, unlike `ShowDialog()`, so the banner stays up while Revit waits for a click. Closing it in a `finally` block means it disappears however the tool ends.
+- The window only receives text, never Revit objects. The command does all the Revit work, so each file has one job.
 
 ## How these tools are made
 
-I plan each tool and decide how it should behave, the code is written with an AI assistant (Claude), and I don't move on until I can explain what every part does. The steps are adapted from Erik Frits's PROCESS framework for pyRevit tools.
+I plan each tool and decide how it should behave, and an AI assistant (Claude) helps with the code: it explains each piece, and I type it in myself, one small piece at a time, building and testing in Revit as I go. I don't move on until I can explain what every part does. The first C# version of View Number + Title was written by the assistant; I then rebuilt it from a blank folder this way, starting with the project file and a Hello button. The steps are adapted from Erik Frits's PROCESS framework for pyRevit tools.
