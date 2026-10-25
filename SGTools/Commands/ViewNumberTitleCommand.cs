@@ -26,7 +26,7 @@ namespace SGTools.Commands
             Document doc = uidoc.Document;
 
             // 1. Check that the open view is a sheet. If it isn't, say so and stop.
-            if (doc.ActiveView is not ViewSheet)
+            if (!(doc.ActiveView is ViewSheet))
             {
                 TaskDialog.Show(ToolName,
                     "Open a sheet first, then run this tool.\n\n" +

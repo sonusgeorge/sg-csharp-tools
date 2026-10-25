@@ -8,6 +8,7 @@
     <!-- Each Revit runs on its own .NET version, and only on Windows. -->
     <TargetFramework Condition="'$(RevitVersion)' == '2027'">net10.0-windows</TargetFramework>
     <TargetFramework Condition="'$(RevitVersion)' == '2025' Or '$(RevitVersion)' == '2026'">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(RevitVersion)' == '2024'">net48</TargetFramework>    
     <!-- Each Revit version gets its own folders: bin\2025, bin\2026,
          bin\2027 for the finished files, obj\2025 and so on for the
          build's working files. Otherwise 2025 and 2026, both .NET 8,
@@ -29,9 +30,6 @@
     <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
-  <!-- The Revit API: the two files that let our code talk to Revit.
-       Private=false means "don't copy them next to our dll";
-       Revit already has them. -->
   <!-- The Revit API: the two files that let our code talk to Revit.
        They come from NuGet, in the version matching RevitVersion, so
        the project builds for any Revit, installed or not.
@@ -64,7 +62,7 @@
           SourceFiles="$(TargetPath)" DestinationFolder="$(RevitAddinsFolder)\SGTools" />
     <Copy Condition="Exists('$(RevitExe)')"
           SourceFiles="SGTools.addin" DestinationFolder="$(RevitAddinsFolder)" />
-    <Message Condition="!Exists('$(RevitExe)')" Importance="high"
+    <Warning Condition="!Exists('$(RevitExe)')"
              Text="Revit $(RevitVersion) is not installed, so the add-in was not copied." />
   </Target>
 
