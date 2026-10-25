@@ -26,7 +26,7 @@ Each change is one undo step. A legend has no Detail Number, so for a legend onl
 
 While it waits for a click, a teal banner at the top of the drawing area says what to do. The pyRevit version uses the same banner.
 
-**Tested in:** Revit 2027, in full. Builds for Revit 2024, 2025 and 2026 are not set up yet.
+**Tested in:** Revit 2024 and Revit 2027, in full. Written to be compatible with Revit 2025 and 2026: it builds for both, but I haven't run it in them yet.
 
 ## The same tool, two ways
 
@@ -40,12 +40,13 @@ While it waits for a click, a teal banner at the top of the drawing area says wh
 | Transactions | `with revit.Transaction(...)` | `Start`, `Commit` and `RollBack` written out |
 | The box | XAML file loaded by a Python class | The same XAML, compiled together with a C# class |
 | Mistakes in names or types | Found when the line runs | Most are found when building |
+| Several Revit versions | The same script runs in every version | One `.dll` per Revit version, each built from the same code |
 
 ## How the project is laid out
 
 ```
 SGTools/
-  SGTools.csproj      project settings: .NET version, links to the Revit API, the copy-to-Revit step
+  SGTools.csproj      project settings: which Revit, its .NET version, the Revit API packages, the copy-to-Revit step
   SGTools.addin       the manifest Revit reads at startup
   App.cs              runs at startup; builds the tab, panels and buttons
   Icons.cs            loads button pictures out of the dll
@@ -57,14 +58,29 @@ SGTools/
 
 ## Build and install
 
-You need Revit 2027 and the .NET 10 SDK.
+You need the .NET 10 SDK. Revit itself isn't needed to build: the Revit API files come from NuGet (the `Nice3point.Revit.Api` packages), in the version that matches each Revit.
 
 1. Clone this repository.
 2. Close Revit.
-3. In a terminal, go into the `SGTools` folder and run `dotnet build`. The build copies the add-in into `%APPDATA%\Autodesk\Revit\Addins\2027`.
+3. In a terminal, go into the `SGTools` folder and build for your Revit version:
+
+   | Revit | Command | .NET |
+   |---|---|---|
+   | 2027 | `dotnet build` | .NET 10 |
+   | 2026 | `dotnet build -p:RevitVersion=2026` | .NET 8 |
+   | 2025 | `dotnet build -p:RevitVersion=2025` | .NET 8 |
+   | 2024 | `dotnet build -p:RevitVersion=2024` | .NET Framework 4.8 |
+
+   The build goes to `bin\<version>`. If that Revit is installed, it is also copied into `%APPDATA%\Autodesk\Revit\Addins\<version>`; if not, the build says so with a warning.
 4. Start Revit. When it warns about an unsigned add-in, choose **Always Load**. The **SG Tools 2.0** tab appears on the ribbon.
 
-To check that the code compiles while Revit is open, run `dotnet build -p:SkipRevitCopy=true`, which skips the copy into Revit's folder. You can also open `SGTools/SGTools.csproj` in Visual Studio and build from there.
+To build every version in one go (PowerShell):
+
+```powershell
+foreach ($v in 2024, 2025, 2026, 2027) { dotnet build -p:RevitVersion=$v }
+```
+
+To check that the code compiles while Revit is open, add `-p:SkipRevitCopy=true`, which skips the copy into Revit's folder. You can also open `SGTools/SGTools.csproj` in Visual Studio and build from there; it builds for Revit 2027.
 
 ## What building it taught
 
@@ -81,6 +97,16 @@ To check that the code compiles while Revit is open, run `dotnet build -p:SkipRe
 - Code can subscribe to Revit's own events. Listening for `ThemeChanged` lets the button swap to its dark-theme picture the moment the theme changes.
 - A window shown with `Show()` doesn't wait, unlike `ShowDialog()`, so the banner stays up while Revit waits for a click. Closing it in a `finally` block means it disappears however the tool ends.
 - The window only receives text, never Revit objects. The command does all the Revit work, so each file has one job.
+
+### Building for several Revit versions
+
+- A `.dll` fits one Revit and one .NET: Revit 2024 runs on .NET Framework 4.8, 2025 and 2026 on .NET 8, 2027 on .NET 10. So the project builds once per version, from the same code, choosing .NET from a single `RevitVersion` setting.
+- You can build for a Revit you don't have. The API files come from NuGet in every version, so building needs no Revit at all. Running it is another matter, which is why 2025 and 2026 are "written to be compatible with", not "tested".
+- Project files have their own small language: settings you name yourself, `$(Name)` to read them, and `Condition` to use a line only when a test is true.
+- Don't trust a folder to tell you what's installed. pyRevit had created `Addins\2026` on a machine without Revit 2026, so the copy step checks for `Revit.exe` instead.
+- Older .NET means older C#. .NET Framework projects use C# 7.3, which has no `is not`; the 2024 build failed until `x is not ViewSheet` became `!(x is ViewSheet)`, which works everywhere.
+- `dotnet build` hides plain messages in its short output, so a note that must be seen has to be a warning.
+- A build only recompiles when a source file changed, and copying keeps the file's original time. An unchanged time in Revit's folder doesn't mean the build failed.
 
 ## How these tools are made
 
