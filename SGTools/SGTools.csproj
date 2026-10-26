@@ -9,15 +9,22 @@
     <TargetFramework Condition="'$(RevitVersion)' == '2027'">net10.0-windows</TargetFramework>
     <TargetFramework Condition="'$(RevitVersion)' == '2025' Or '$(RevitVersion)' == '2026'">net8.0-windows</TargetFramework>
     <TargetFramework Condition="'$(RevitVersion)' == '2024'">net48</TargetFramework>    
-    <!-- Each Revit version gets its own folders: bin\2025, bin\2026,
-         bin\2027 for the finished files, obj\2025 and so on for the
-         build's working files. Otherwise 2025 and 2026, both .NET 8,
-         would overwrite each other. -->
-    <OutputPath>bin\$(RevitVersion)\</OutputPath>
-    <IntermediateOutputPath>obj\$(RevitVersion)\</IntermediateOutputPath>
+    <!-- Each build type and Revit version gets its own folders:
+         bin\Debug\2027, bin\Release\2024 and so on for the finished
+         files, and the same under obj for the build's working files.
+         Otherwise builds would overwrite each other. -->
+    <OutputPath>bin\$(Configuration)\$(RevitVersion)\</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(RevitVersion)\</IntermediateOutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>    
     <!-- Revit is a 64-bit program, so our dll must be 64-bit too. -->
     <PlatformTarget>x64</PlatformTarget>
+    <!-- What Windows shows in the dll's Properties > Details, and what
+         the installer reads. Change the version here for each release. -->
+    <Version>1.1.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Product>SG Tools 2.0</Product>
+    <Company>Sonu George</Company>
+    <Copyright>Copyright (c) 2026 Sonu George</Copyright>    
     <!-- Include WPF, Windows' library for building windows. -->
     <UseWPF>true</UseWPF>
     <!-- Two conveniences switched off, so nothing is added behind our backs. -->
