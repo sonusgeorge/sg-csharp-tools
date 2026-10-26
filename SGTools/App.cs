@@ -33,7 +33,7 @@ namespace SGTools
                 "4. Click the next view, or press Esc to finish.\n\n" +
                 "Each change is one undo step. A legend has no number, so only its " +
                 "title can be changed.\n\n" +
-                "Version 1.0 (October 2026). Tested in Revit 2027. Press F1 for the full guide.";
+                "Version 1.1 (October 2026). Tested in Revit 2024 and 2027. Press F1 for the full guide.";
 
             // F1 while hovering opens the tool's section of the README.
             buttonData.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url,

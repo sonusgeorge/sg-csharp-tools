@@ -1,8 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- Revit 2027 runs on .NET 10, and only on Windows. -->
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- Which Revit to build for. "dotnet build" alone builds for 2027;
+         "dotnet build -p:RevitVersion=2025" builds for 2025. -->
+    <RevitVersion Condition="'$(RevitVersion)' == ''">2027</RevitVersion>
+
+    <!-- Each Revit runs on its own .NET version, and only on Windows. -->
+    <TargetFramework Condition="'$(RevitVersion)' == '2027'">net10.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(RevitVersion)' == '2025' Or '$(RevitVersion)' == '2026'">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(RevitVersion)' == '2024'">net48</TargetFramework>    
+    <!-- Each Revit version gets its own folders: bin\2025, bin\2026,
+         bin\2027 for the finished files, obj\2025 and so on for the
+         build's working files. Otherwise 2025 and 2026, both .NET 8,
+         would overwrite each other. -->
+    <OutputPath>bin\$(RevitVersion)\</OutputPath>
+    <IntermediateOutputPath>obj\$(RevitVersion)\</IntermediateOutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>    
     <!-- Revit is a 64-bit program, so our dll must be 64-bit too. -->
     <PlatformTarget>x64</PlatformTarget>
     <!-- Include WPF, Windows' library for building windows. -->
@@ -18,33 +31,39 @@
   </PropertyGroup>
 
   <!-- The Revit API: the two files that let our code talk to Revit.
-       Private=false means "don't copy them next to our dll";
+       They come from NuGet, in the version matching RevitVersion, so
+       the project builds for any Revit, installed or not.
+       ExcludeAssets="runtime" means "don't copy them next to our dll";
        Revit already has them. -->
   <ItemGroup>
-    <Reference Include="RevitAPI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2027\RevitAPI.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="RevitAPIUI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2027\RevitAPIUI.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI"
+                      Version="$(RevitVersion).*"
+                      ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI"
+                      Version="$(RevitVersion).*"
+                      ExcludeAssets="runtime" PrivateAssets="all" />
   </ItemGroup>
   <!-- Pack the button pictures inside the dll. -->
   <ItemGroup>
     <EmbeddedResource Include="Resources\*.png" />
   </ItemGroup>  
   <!-- After every build, copy the dll and the manifest to the folder
-       where Revit 2027 looks for add-ins. Revit must be closed, because
-       a running Revit keeps the dll locked.
+       where this Revit version looks for add-ins, if that Revit is
+       installed. Revit must be closed, because a running Revit keeps
+       the dll locked.
        Building with -p:SkipRevitCopy=true only checks that the code
        compiles, which works while Revit is open. -->
   <Target Name="CopyToRevit" AfterTargets="Build" Condition="'$(SkipRevitCopy)' != 'true'">
     <PropertyGroup>
-      <RevitAddinsFolder>$(AppData)\Autodesk\Revit\Addins\2027</RevitAddinsFolder>
+      <RevitExe>C:\Program Files\Autodesk\Revit $(RevitVersion)\Revit.exe</RevitExe>
+      <RevitAddinsFolder>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinsFolder>
     </PropertyGroup>
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(RevitAddinsFolder)\SGTools" />
-    <Copy SourceFiles="SGTools.addin" DestinationFolder="$(RevitAddinsFolder)" />
+    <Copy Condition="Exists('$(RevitExe)')"
+          SourceFiles="$(TargetPath)" DestinationFolder="$(RevitAddinsFolder)\SGTools" />
+    <Copy Condition="Exists('$(RevitExe)')"
+          SourceFiles="SGTools.addin" DestinationFolder="$(RevitAddinsFolder)" />
+    <Warning Condition="!Exists('$(RevitExe)')"
+             Text="Revit $(RevitVersion) is not installed, so the add-in was not copied." />
   </Target>
 
 </Project>
