@@ -48,3 +48,56 @@ function RevitInstalled(Version: String): Boolean;
 begin
   Result := FileExists(ExpandConstant('{commonpf64}\Autodesk\Revit ' + Version + '\Revit.exe'));
 end;
+// True if any Revit is running: asks Windows for the running programs
+// named Revit.exe. If Windows can't be asked, it answers False and the
+// installer carries on.
+function RevitRunning(): Boolean;
+var
+  Locator, WMI, Found: Variant;
+begin
+  try
+    Locator := CreateOleObject('WbemScripting.SWbemLocator');
+    WMI := Locator.ConnectServer('.', 'root\CIMV2');
+    Found := WMI.ExecQuery('SELECT ProcessId FROM Win32_Process WHERE Name = ''Revit.exe''');
+    Result := Found.Count > 0;
+  except
+    Result := False;
+  end;
+end;
+// While Revit is running, ask the user to close it. True once Revit is
+// closed, False if the user clicks Cancel.
+function WaitForRevitToClose(Action: String): Boolean;
+begin
+  Result := True;
+  while RevitRunning() do
+  begin
+    if MsgBox('Revit is open. Save your work and close every Revit window, ' +
+              'then click Retry to ' + Action + ' SG Tools 2.0.',
+              mbError, MB_RETRYCANCEL) = IDCANCEL then
+    begin
+      Result := False;
+      exit;
+    end;
+  end;
+end;
+// Runs before the installer shows its first page. Returning False stops
+// the installer, so with no supported Revit it says why and closes.
+
+function InitializeSetup(): Boolean;
+begin
+  Result := RevitInstalled('2024') or RevitInstalled('2025') or
+            RevitInstalled('2026') or RevitInstalled('2027');
+  if not Result then
+    MsgBox('SG Tools 2.0 needs Revit 2024, 2025, 2026 or 2027, ' +
+           'and none of them is installed on this computer.', mbError, MB_OK);
+
+  // Revit locks the add-in while it runs, so it must be closed first.
+  if Result then
+    Result := WaitForRevitToClose('install');
+end;
+
+// Runs before uninstalling starts. Same reason: Revit must be closed.
+function InitializeUninstall(): Boolean;
+begin
+  Result := WaitForRevitToClose('uninstall');
+end;
