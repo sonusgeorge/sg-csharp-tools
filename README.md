@@ -2,6 +2,19 @@
 
 Revit add-ins written in C# against the Revit API. Each tool here is a rebuild of one I first made in pyRevit, in [sg-pyrevit-tools](https://github.com/sonusgeorge/sg-pyrevit-tools). Building the same tool twice is how I'm learning what pyRevit does for you and what a compiled add-in has to do for itself.
 
+## Install
+
+1. Download `SGToolsSetup-<version>.exe` from the [latest release](https://github.com/sonusgeorge/sg-csharp-tools/releases/latest).
+2. Close Revit, then run the installer. It installs for your Windows user only, so it doesn't ask for administrator rights, and it adds SG Tools to every Revit from 2024 to 2027 it finds on the computer.
+3. Start Revit and choose **Always Load** when it asks about SG Tools. The **SG Tools 2.0** tab appears on the ribbon.
+
+Two warnings to expect, because neither the installer nor the add-in is signed with a paid code-signing certificate:
+
+- Windows may show "Windows protected your PC" when you run the installer. Click **More info**, then **Run anyway**.
+- Revit asks whether to load an add-in from an unknown publisher. Choose **Always Load**.
+
+To remove it, go to **Settings → Apps → Installed apps → SG Tools 2.0 → Uninstall**. If you install a new version of Revit later, run the installer again.
+
 ## Tools
 
 ### View Number + Title
@@ -54,9 +67,11 @@ SGTools/
   Dialogs/            windows: a .xaml layout plus its .xaml.cs logic
   Styles/             the shared SG Tools colours and styles
   Resources/          button pictures
+installer/
+  SGTools.iss         the Inno Setup script that builds the installer
 ```
 
-## Build and install
+## Build from source
 
 You need the .NET 10 SDK. Revit itself isn't needed to build: the Revit API files come from NuGet (the `Nice3point.Revit.Api` packages), in the version that matches each Revit.
 
@@ -71,7 +86,7 @@ You need the .NET 10 SDK. Revit itself isn't needed to build: the Revit API file
    | 2025 | `dotnet build -p:RevitVersion=2025` | .NET 8 |
    | 2024 | `dotnet build -p:RevitVersion=2024` | .NET Framework 4.8 |
 
-   The build goes to `bin\<version>`. If that Revit is installed, it is also copied into `%APPDATA%\Autodesk\Revit\Addins\<version>`; if not, the build says so with a warning.
+   The build goes to `bin\Debug\<version>`. If that Revit is installed, it is also copied into `%APPDATA%\Autodesk\Revit\Addins\<version>`; if not, the build says so with a warning.
 4. Start Revit. When it warns about an unsigned add-in, choose **Always Load**. The **SG Tools 2.0** tab appears on the ribbon.
 
 To build every version in one go (PowerShell):
@@ -81,6 +96,24 @@ foreach ($v in 2024, 2025, 2026, 2027) { dotnet build -p:RevitVersion=$v }
 ```
 
 To check that the code compiles while Revit is open, add `-p:SkipRevitCopy=true`, which skips the copy into Revit's folder. You can also open `SGTools/SGTools.csproj` in Visual Studio and build from there; it builds for Revit 2027.
+
+### Building the installer
+
+You also need [Inno Setup 6](https://jrsoftware.org/isinfo.php). The version number is set once, in `SGTools.csproj`; the installer reads it from the dll.
+
+1. In the `SGTools` folder, make Release builds of all four versions:
+
+   ```powershell
+   foreach ($v in 2024, 2025, 2026, 2027) { dotnet build -c Release -p:RevitVersion=$v -p:SkipRevitCopy=true }
+   ```
+
+2. In the repository folder, compile the installer (the path is where winget installs Inno Setup for one user):
+
+   ```powershell
+   & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" installer\SGTools.iss
+   ```
+
+   The result is `installer\Output\SGToolsSetup-<version>.exe`, which goes on GitHub Releases rather than in the repository.
 
 ## What building it taught
 
@@ -108,6 +141,20 @@ To check that the code compiles while Revit is open, add `-p:SkipRevitCopy=true`
 - `dotnet build` hides plain messages in its short output, so a note that must be seen has to be a warning.
 - A build only recompiles when a source file changed, and copying keeps the file's original time. An unchanged time in Revit's folder doesn't mean the build failed.
 
+### Making an installer
+
+- An installer doesn't do anything clever. It copies the same two files a build copies, into the same folders, and remembers them so they can be uninstalled.
+- Debug and Release are the same code built two ways. Release builds, which the installer uses, get their own folders so they never mix with the test builds.
+- Write the version number once. The installer reads it out of the dll, so the project file is the only place it changes.
+- Installing into the user's own folders (`AppData`) needs no administrator rights.
+- Inno Setup has its own short script, and anything beyond plain settings is written in Pascal: `begin` and `end` instead of braces, `:=` to set a value, `=` to compare, and functions must come before the code that uses them.
+- Test what happens when things go wrong rather than guessing. With Revit open, the installer failed with "Access is denied" and the uninstaller left the dll behind, so both now check whether Revit is running and ask the user to close it.
+- An installer's ID must never change. A new installer with the same ID replaces the old install; a different ID would leave two copies.
+
 ## How these tools are made
 
 I plan each tool and decide how it should behave, and an AI assistant (Claude) helps with the code: it explains each piece, and I type it in myself, one small piece at a time, building and testing in Revit as I go. I don't move on until I can explain what every part does. The first C# version of View Number + Title was written by the assistant; I then rebuilt it from a blank folder this way, starting with the project file and a Hello button. The steps are adapted from Erik Frits's PROCESS framework for pyRevit tools.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
