@@ -20,7 +20,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <!-- What Windows shows in the dll's Properties > Details, and what
          the installer reads. Change the version here for each release. -->
-    <Version>1..0</Version>
+    <Version>1.2.0</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Product>SG Tools 2.0</Product>
     <Company>Sonu George</Company>
