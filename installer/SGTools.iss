@@ -23,7 +23,7 @@ DefaultDirName={autopf}\SG Tools 2.0
 DisableDirPage=yes
 DisableProgramGroupPage=yes
 
-; The finished installer: installer\Output\SGToolsSetup-1.1.0.exe
+; The finished installer: installer\Output\SGToolsSetup-<version>.exe
 OutputDir=Output
 OutputBaseFilename=SGToolsSetup-{#AppVersion}
 WizardStyle=modern
@@ -40,6 +40,10 @@ Source: "..\SGTools\bin\Release\2026\SGTools.dll"; DestDir: "{userappdata}\Autod
 Source: "..\SGTools\SGTools.addin";                DestDir: "{userappdata}\Autodesk\Revit\Addins\2026";         Flags: ignoreversion; Check: RevitInstalled('2026')
 Source: "..\SGTools\bin\Release\2027\SGTools.dll"; DestDir: "{userappdata}\Autodesk\Revit\Addins\2027\SGTools"; Flags: ignoreversion; Check: RevitInstalled('2027')
 Source: "..\SGTools\SGTools.addin";                DestDir: "{userappdata}\Autodesk\Revit\Addins\2027";         Flags: ignoreversion; Check: RevitInstalled('2027')
+[UninstallDelete]
+; Auto Number Views remembers your last order in this folder. Remove it
+; along with the add-in, so nothing is left behind.
+Type: filesandordirs; Name: "{userappdata}\SG Tools"
 
 [Code]
 // True if this Revit version is installed. The same test as the copy

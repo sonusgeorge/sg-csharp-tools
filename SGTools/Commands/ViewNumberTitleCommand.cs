@@ -16,7 +16,7 @@ namespace SGTools.Commands
         private const string ToolName = "View Number + Title";
         // Revit refuses two views with the same number on one sheet, even
         // for a moment, so a swap parks one view on this number in between.
-        private const string TempNumber = "SG_TEMP_SWAP";
+        private const string TempNumber = Viewports.TempPrefix + "SWAP";
 
         public Result Execute(ExternalCommandData commandData,
                               ref string message, ElementSet elements)
@@ -58,9 +58,8 @@ namespace SGTools.Commands
                     Viewport viewport = (Viewport)doc.GetElement(reference);
 
                     // 3. Read the view's Detail Number and Title on Sheet.
-                    Parameter numberParam = viewport.get_Parameter(BuiltInParameter.VIEWPORT_DETAIL_NUMBER);
                     Parameter titleParam = viewport.get_Parameter(BuiltInParameter.VIEW_DESCRIPTION);
-                    string oldNumber = numberParam.AsString() ?? "";
+                    string oldNumber = Viewports.GetNumber(viewport);
                     string oldTitle = titleParam.AsString() ?? "";
 
                     // 4. Note which number each of the other views on this sheet has.
@@ -71,9 +70,7 @@ namespace SGTools.Commands
                     foreach (ElementId otherId in sheet.GetAllViewports())
                     {
                         Viewport otherViewport = (Viewport)doc.GetElement(otherId);
-                        string number = otherViewport
-                            .get_Parameter(BuiltInParameter.VIEWPORT_DETAIL_NUMBER)
-                            .AsString() ?? "";
+                        string number = Viewports.GetNumber(otherViewport);
                         if (otherViewport.Id != viewport.Id && number != "")
                         {
                             others[number] = otherViewport;
@@ -111,13 +108,13 @@ namespace SGTools.Commands
                             {
                                 if (others.TryGetValue(newNumber, out Viewport swapWith))
                                 {
-                                    SetNumber(swapWith, TempNumber);
-                                    SetNumber(viewport, newNumber);
-                                    SetNumber(swapWith, oldNumber);
+                                    Viewports.SetNumber(swapWith, TempNumber);
+                                    Viewports.SetNumber(viewport, newNumber);
+                                    Viewports.SetNumber(swapWith, oldNumber);
                                 }
                                 else
                                 {
-                                    SetNumber(viewport, newNumber);
+                                    Viewports.SetNumber(viewport, newNumber);
                                 }
                             }
                             if (newTitle != oldTitle)
@@ -142,16 +139,6 @@ namespace SGTools.Commands
             }               
 
             return Result.Succeeded;
-        }
-        // Set a view's Detail Number. If Revit refuses, throw an error, so
-        // the transaction undoes everything done so far.
-        private static void SetNumber(Viewport viewport, string number)
-        {
-            Parameter param = viewport.get_Parameter(BuiltInParameter.VIEWPORT_DETAIL_NUMBER);
-            if (!param.Set(number))
-            {
-                throw new InvalidOperationException($"Revit refused the number '{number}'.");
-            }
         }
         // The title you see on the sheet: Title on Sheet, or the view's name
         // when Title on Sheet is empty.

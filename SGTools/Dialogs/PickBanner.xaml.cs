@@ -2,6 +2,8 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using Autodesk.Revit.UI;
+using System;
+using System.Windows.Threading;
 
 namespace SGTools.Dialogs
 {
@@ -12,10 +14,19 @@ namespace SGTools.Dialogs
         // Where Revit's drawing area is on the screen, in pixels.
         private readonly Autodesk.Revit.DB.Rectangle drawingArea;
 
-        public PickBanner(string message, UIApplication revit)
+        public PickBanner(string message, UIApplication revit, string hint = "Esc to finish")
         {
             InitializeComponent();
             MessageText.Text = message;
+            // A banner that only reports something has no hint.
+            if (hint == "")
+            {
+                HintText.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                HintText.Text = hint;
+            }
             drawingArea = revit.DrawingAreaExtents;
 
             // Make Revit the banner's owner, so it stays in front of Revit
@@ -27,7 +38,6 @@ namespace SGTools.Dialogs
             Left = -10000;
             Top = -10000;
         }
-
         private void WindowLoaded(object sender, RoutedEventArgs e)
         {
             // Revit measures in screen pixels, WPF in its own units. On a
@@ -40,5 +50,18 @@ namespace SGTools.Dialogs
             Left = (areaLeft + areaRight) / 2 - ActualWidth / 2;
             Top = areaTop;
         }
+        // Show the banner, then close it by itself after the given seconds.
+        public void ShowFor(double seconds)
+        {
+            Show();
+            DispatcherTimer timer = new DispatcherTimer();
+            timer.Interval = TimeSpan.FromSeconds(seconds);
+            timer.Tick += (sender, e) =>
+            {
+                timer.Stop();
+                Close();
+            };
+            timer.Start();
+        }        
     }
 }
