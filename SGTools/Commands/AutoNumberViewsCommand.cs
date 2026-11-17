@@ -4,6 +4,8 @@ using Autodesk.Revit.UI;
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using System.Windows.Interop;
+using SGTools.Dialogs;
 
 namespace SGTools.Commands
 {
@@ -45,29 +47,15 @@ namespace SGTools.Commands
                 TaskDialog.Show(ToolName, "This sheet has no numbered views to renumber.");
                 return Result.Cancelled;
             }
-            // 3. Ask for the reading order. Cancel, Esc or the × stops the tool.
-            TaskDialog ask = new TaskDialog(ToolName);
-            ask.MainInstruction = "Number the views on this sheet:";
-            ask.AddCommandLink(TaskDialogCommandLinkId.CommandLink1, "Columns first",
-                "Each column top to bottom, columns left to right.");
-            ask.AddCommandLink(TaskDialogCommandLinkId.CommandLink2, "Rows first",
-                "Each row left to right, rows top to bottom.");
-            ask.CommonButtons = TaskDialogCommonButtons.Cancel;
-            TaskDialogResult answer = ask.Show();
-
-            string choice;
-            if (answer == TaskDialogResult.CommandLink1)
-            {
-                choice = "Columns first";
-            }
-            else if (answer == TaskDialogResult.CommandLink2)
-            {
-                choice = "Rows first";
-            }
-            else
+            // 3. Ask for the reading order. Esc or the × stops the tool.
+            OrderWindow window = new OrderWindow("Columns first");
+            // Make Revit the window's owner, so it opens centred over Revit.
+            new WindowInteropHelper(window).Owner = commandData.Application.MainWindowHandle;
+            if (window.ShowDialog() != true)
             {
                 return Result.Cancelled;
-            }            
+            }
+            string choice = window.Choice;
             // 4 and 5. Group the views into columns or rows, then put them
             //    in reading order.
             List<Viewport> ordered = new List<Viewport>();
