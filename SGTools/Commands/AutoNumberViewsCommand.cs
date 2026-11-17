@@ -6,6 +6,7 @@ using System.Linq;
 using System;
 using System.Windows.Interop;
 using SGTools.Dialogs;
+using System.IO;
 
 namespace SGTools.Commands
 {
@@ -14,6 +15,11 @@ namespace SGTools.Commands
     public class AutoNumberViewsCommand : IExternalCommand
     {
         private const string ToolName = "Auto Number Views";
+        // Where the last choice is kept between runs: a one-line text file in
+        // your own AppData folder, %APPDATA%\SG Tools\auto-number-views.txt.
+        private static readonly string ChoiceFile = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "SG Tools", "auto-number-views.txt");
 
         public Result Execute(ExternalCommandData commandData,
                               ref string message, ElementSet elements)
@@ -47,8 +53,9 @@ namespace SGTools.Commands
                 TaskDialog.Show(ToolName, "This sheet has no numbered views to renumber.");
                 return Result.Cancelled;
             }
-            // 3. Ask for the reading order. Esc or the × stops the tool.
-            OrderWindow window = new OrderWindow("Columns first");
+            // 3. Ask for the reading order, with last time's choice highlighted.
+            //    Esc or the × stops the tool. A new choice is remembered for next time.
+            OrderWindow window = new OrderWindow(LoadLastChoice());
             // Make Revit the window's owner, so it opens centred over Revit.
             new WindowInteropHelper(window).Owner = commandData.Application.MainWindowHandle;
             if (window.ShowDialog() != true)
@@ -56,6 +63,8 @@ namespace SGTools.Commands
                 return Result.Cancelled;
             }
             string choice = window.Choice;
+            SaveLastChoice(choice);
+
             // 4 and 5. Group the views into columns or rows, then put them
             //    in reading order.
             List<Viewport> ordered = new List<Viewport>();
@@ -130,6 +139,37 @@ namespace SGTools.Commands
             TaskDialog.Show(ToolName, $"Numbered {viewsText}, {choice.ToLower()}.");
             return Result.Succeeded;
         }
+        // Last time's choice, or "Columns first" the very first time.
+        // Remembering is a convenience, so if the file can't be read,
+        // just use the default.
+        private static string LoadLastChoice()
+        {
+            try
+            {
+                if (File.Exists(ChoiceFile))
+                {
+                    return File.ReadAllText(ChoiceFile).Trim();
+                }
+            }
+            catch (Exception)
+            {
+            }
+            return "Columns first";
+        }
+
+        // Keep this choice for next time. If it can't be saved, carry on:
+        // numbering the views matters more.
+        private static void SaveLastChoice(string choice)
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(ChoiceFile));
+                File.WriteAllText(ChoiceFile, choice);
+            }
+            catch (Exception)
+            {
+            }
+        }        
         // Where the middle of the view's box is on the sheet, across ("x")
         // or up ("y").
         private static double Centre(Viewport viewport, string axis)
