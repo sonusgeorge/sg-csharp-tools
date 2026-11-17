@@ -41,6 +41,31 @@ While it waits for a click, a teal banner at the top of the drawing area says wh
 
 **Tested in:** Revit 2024 and Revit 2027, in full. Written to be compatible with Revit 2025 and 2026: it builds for both, but I haven't run it in them yet.
 
+### Auto Number Views
+
+**Ribbon:** SG Tools 2.0 tab, Sheets panel
+
+**The problem.** Once views have been moved around a sheet, their Detail Numbers no longer follow the layout. Putting them back in order by hand means renumbering every view, one at a time, around Revit's rule that two views can't share a number.
+
+**What the tool does.** Numbers every view on the open sheet 1, 2, 3… by where it sits, in one go. You choose the reading order:
+
+- **Columns first:** each column top to bottom, columns left to right.
+- **Rows first:** each row left to right, rows top to bottom.
+
+Views don't have to be lined up exactly: a view joins a column (or row) when its centre falls within the first view of that column.
+
+It behaves the same as the pyRevit version; the [section there](https://github.com/sonusgeorge/sg-pyrevit-tools#auto-number-views) shows the window.
+
+**How to use it**
+
+1. Open a sheet and click **Auto Number Views**.
+2. Click **Columns first** or **Rows first**. Your last choice is highlighted, so Enter picks it.
+3. A teal banner at the top of the drawing area says how many views were numbered, and closes by itself.
+
+All the changes are one undo step. Legends and schedules are skipped, and numbering always starts at 1. If the views are already in order, the tool says so and changes nothing. The last choice is kept in `%APPDATA%\SG Tools\auto-number-views.txt`, which uninstalling removes.
+
+**Tested in:** Revit 2024 and Revit 2027, in full. Written to be compatible with Revit 2025 and 2026: it builds for both, but I haven't run it in them yet.
+
 ## The same tool, two ways
 
 | | pyRevit | C# |
@@ -54,6 +79,8 @@ While it waits for a click, a teal banner at the top of the drawing area says wh
 | The box | XAML file loaded by a Python class | The same XAML, compiled together with a C# class |
 | Mistakes in names or types | Found when the line runs | Most are found when building |
 | Several Revit versions | The same script runs in every version | One `.dll` per Revit version, each built from the same code |
+| Remembering a choice | `script.get_config()` | A one-line text file in `AppData`, read and written by the tool |
+| A message that closes by itself | `forms.show_balloon` | The teal banner, closed by a timer |
 
 ## How the project is laid out
 
@@ -63,7 +90,7 @@ SGTools/
   SGTools.addin       the manifest Revit reads at startup
   App.cs              runs at startup; builds the tab, panels and buttons
   Icons.cs            loads button pictures out of the dll
-  Commands/           one class per tool
+  Commands/           one class per tool, plus Viewports.cs, the Detail Number code both tools share
   Dialogs/            windows: a .xaml layout plus its .xaml.cs logic
   Styles/             the shared SG Tools colours and styles
   Resources/          button pictures
@@ -151,9 +178,19 @@ You also need [Inno Setup 6](https://jrsoftware.org/isinfo.php). The version num
 - Test what happens when things go wrong rather than guessing. With Revit open, the installer failed with "Access is denied" and the uninstaller left the dll behind, so both now check whether Revit is running and ask the user to close it.
 - An installer's ID must never change. A new installer with the same ID replaces the old install; a different ID would leave two copies.
 
+### Adding a second tool: Auto Number Views
+
+- A second button is the moment for a helper. `AddButton` takes the parts that differ (name, text, command, picture, tooltip, help link), so each new tool is one call in `App.cs`. The theme swap now loops over a `Dictionary` of every button and its picture name instead of one stored button.
+- Code shared by two tools moves into its own class. Reading and setting a Detail Number now lives in `Viewports.cs`, used by both commands, as `viewports.py` is in pyRevit. Moving it meant testing the first tool again.
+- C# sorts with LINQ: `views.OrderBy(v => Centre(v, "x"))` is pyRevit's `sorted(views, key=lambda v: centre(v, "x"))`. A method can return two values at once as a tuple, `(double low, double high)`.
+- A plain Revit `TaskDialog` with two command links was enough to make the logic work. The teal window came afterwards, as a separate step.
+- pyRevit remembers settings and shows balloons for you. C# has neither built in, and Revit has no official balloon for add-ins, so the tool keeps the last choice in a small text file and reuses the teal banner, closed after three seconds by a `DispatcherTimer`. A window opened with `Show()` stays up after the command has finished.
+- An empty `catch` usually hides a mistake. Here it is on purpose: if the remembered choice can't be read or saved, the tool carries on with the default, and a comment says why.
+- The compiler names the line where it got confused, not always the line with the mistake. "`}` expected" came from a replacement that had swallowed the end of the method above it, and "already defined in this scope" from an old line left behind under its replacement.
+
 ## How these tools are made
 
-I plan each tool and decide how it should behave, and an AI assistant (Claude) helps with the code: it explains each piece, and I type it in myself, one small piece at a time, building and testing in Revit as I go. I don't move on until I can explain what every part does. The first C# version of View Number + Title was written by the assistant; I then rebuilt it from a blank folder this way, starting with the project file and a Hello button. The steps are adapted from Erik Frits's PROCESS framework for pyRevit tools.
+I plan each tool and decide how it should behave, and an AI assistant (Claude) helps with the code: it explains each piece, and I type it in myself, one small piece at a time, building and testing in Revit as I go. I don't move on until I can explain what every part does. The first C# version of View Number + Title was written by the assistant; I then rebuilt it from a blank folder this way, starting with the project file and a Hello button. Auto Number Views was built this way from the start: the logic in three rounds, then the window, the remembered choice, the banner and the tooltip, each tested in Revit before the next. The steps are adapted from Erik Frits's PROCESS framework for pyRevit tools.
 
 ## Licence
 

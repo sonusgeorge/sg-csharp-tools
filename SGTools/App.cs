@@ -37,7 +37,16 @@ namespace SGTools
             AddButton(panel, "AutoNumberViews", "Auto Number\nViews",
                 typeof(AutoNumberViewsCommand), "auto-number-views",
                 "Number the views on a sheet by where they sit.",
-                "Work in progress.",
+                "Gives the views on the open sheet the Detail Numbers 1, 2, 3... in " +
+                "reading order. Columns first: each column top to bottom, columns left " +
+                "to right. Rows first: each row left to right, rows top to bottom.\n\n" +
+                "1. Open a sheet and click this button.\n" +
+                "2. Click Columns first or Rows first.\n" +
+                "3. Check the new numbers on the sheet.\n\n" +
+                "Your last choice is highlighted next time, and Enter picks it. Legends " +
+                "and schedules are skipped. Numbering always starts at 1. All the changes " +
+                "are one undo step. If the views are already in order, nothing is changed.\n\n" +
+                "Version 1.0 (November 2026). Tested in Revit 2024 and 2027. Press F1 for the full guide.",
                 "https://github.com/sonusgeorge/sg-csharp-tools#auto-number-views");
 
             // Revit's light/dark theme can change while it runs.
