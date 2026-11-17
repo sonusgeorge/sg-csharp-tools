@@ -3,6 +3,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 namespace SGTools.Commands
 {
@@ -34,10 +35,7 @@ namespace SGTools.Commands
             foreach (ElementId viewportId in sheet.GetAllViewports())
             {
                 Viewport viewport = (Viewport)doc.GetElement(viewportId);
-                string number = viewport
-                    .get_Parameter(BuiltInParameter.VIEWPORT_DETAIL_NUMBER)
-                    .AsString() ?? "";
-                if (number != "")
+                if (Viewports.GetNumber(viewport) != "")
                 {
                     viewports.Add(viewport);
                 }
@@ -92,18 +90,56 @@ namespace SGTools.Commands
                 }
             }
 
-            // Round 2 only: show the new order without changing anything.
-            string text = choice + ":\n";
+            // 6. If every view already has the number it would get, say so and stop.
+            //    Nothing is changed, so no empty step is added to Undo.
+            bool alreadyInOrder = true;
             for (int i = 0; i < ordered.Count; i++)
             {
-                Viewport viewport = ordered[i];
-                string name = doc.GetElement(viewport.ViewId).Name;
-                string now = viewport
-                    .get_Parameter(BuiltInParameter.VIEWPORT_DETAIL_NUMBER)
-                    .AsString();
-                text += $"\n{i + 1}.  {name}  (now {now})";
+                if (Viewports.GetNumber(ordered[i]) != (i + 1).ToString())
+                {
+                    alreadyInOrder = false;
+                    break;
+                }
             }
-            TaskDialog.Show(ToolName, text);
+            if (alreadyInOrder)
+            {
+                TaskDialog.Show(ToolName,
+                    $"The views on this sheet are already in order ({choice.ToLower()}).\n" +
+                    "Nothing was changed.");
+                return Result.Cancelled;
+            }
+
+            // 7. Renumber as one undo step. First park every view on its own
+            //    temporary number, so two views never share one, even for a moment.
+            //    Then give each view its new number. If Revit refuses any of them,
+            //    the transaction undoes everything and we say so.
+            using (Transaction transaction = new Transaction(doc, ToolName))
+            {
+                transaction.Start();
+                try
+                {
+                    for (int i = 0; i < ordered.Count; i++)
+                    {
+                        Viewports.SetNumber(ordered[i], Viewports.TempPrefix + (i + 1));
+                    }
+                    for (int i = 0; i < ordered.Count; i++)
+                    {
+                        Viewports.SetNumber(ordered[i], (i + 1).ToString());
+                    }
+                    transaction.Commit();
+                }
+                catch (Exception error)
+                {
+                    transaction.RollBack();
+                    TaskDialog.Show(ToolName,
+                        "Revit refused the change, so nothing was changed.\n\n" + error.Message);
+                    return Result.Cancelled;
+                }
+            }
+
+            // Runs only if nothing went wrong above.
+            string viewsText = ordered.Count == 1 ? "1 view" : $"{ordered.Count} views";
+            TaskDialog.Show(ToolName, $"Numbered {viewsText}, {choice.ToLower()}.");
             return Result.Succeeded;
         }
         // Where the middle of the view's box is on the sheet, across ("x")
