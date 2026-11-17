@@ -134,9 +134,12 @@ namespace SGTools.Commands
                 }
             }
 
-            // Runs only if nothing went wrong above.
+            // Runs only if nothing went wrong above. A teal banner says what
+            // was done and closes by itself after 3 seconds.
             string viewsText = ordered.Count == 1 ? "1 view" : $"{ordered.Count} views";
-            TaskDialog.Show(ToolName, $"Numbered {viewsText}, {choice.ToLower()}.");
+            PickBanner banner = new PickBanner($"Numbered {viewsText}, {choice.ToLower()}.",
+                                               commandData.Application, "");
+            banner.ShowFor(3);
             return Result.Succeeded;
         }
         // Last time's choice, or "Columns first" the very first time.

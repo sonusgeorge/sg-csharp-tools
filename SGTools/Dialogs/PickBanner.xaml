@@ -31,7 +31,7 @@
         </Border.Effect>
         <StackPanel Orientation="Horizontal">
             <TextBlock x:Name="MessageText" FontWeight="SemiBold"/>
-            <TextBlock Text="Esc to finish" Margin="14,0,0,0" Opacity="0.75"/>
+            <TextBlock x:Name="HintText" Margin="14,0,0,0" Opacity="0.75"/>
         </StackPanel>
     </Border>
 </Window>
